@@ -6,11 +6,24 @@ import (
 	"github.com/hpcloud/tail"
 )
 
-var tailObj *tail.Tail
-
 //从日志文件收集日志的模块
 
-func Init(filename string) (err error) {
+type TailTask struct {
+	path     string
+	topic    string
+	instance *tail.Tail
+}
+
+func NewTailTask(path string, topic string) (tailObj *TailTask) {
+	tailObj = &TailTask{
+		path:  path,
+		topic: topic,
+	}
+	tailObj.Init() //according to path to open log
+	return
+}
+
+func (t *TailTask) Init() {
 	config := tail.Config{
 		ReOpen:    true,                                 //重新打开
 		Follow:    true,                                 //是否跟随
@@ -18,14 +31,14 @@ func Init(filename string) (err error) {
 		MustExist: false,                                //文件不存在不报错
 		Poll:      true,
 	}
-	tailObj, err = tail.TailFile(filename, config)
+	var err error
+	t.instance, err = tail.TailFile(t.path, config)
 	if err != nil {
 		fmt.Println("tail file failed ,err: ", err)
 		return
 	}
-	return
 }
 
-func Readlog() <-chan *tail.Line {
-	return tailObj.Lines
+func (t *TailTask) Readlog() <-chan *tail.Line {
+	return t.instance.Lines
 }

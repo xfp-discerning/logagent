@@ -10,7 +10,7 @@ import (
 )
 
 type LogEntry struct {
-	Path  string `json:"path"`//tag，可以用json.Unmarshal直接反序列化存到对象中
+	Path  string `json:"path"` //tag，可以用json.Unmarshal直接反序列化存到对象中
 	Topic string `json:"topic"`
 }
 
@@ -46,4 +46,25 @@ func Getconf(key string) (logEntryConf []*LogEntry, err error) {
 		}
 	}
 	return
+}
+
+//哨兵
+func WatchConf(key string, NewConfCh chan<- []*LogEntry) {
+	ch := cli.Watch(context.Background(), key) //保持监控不断开
+	for wresp := range ch {
+		for _, evt := range wresp.Events {
+			fmt.Printf("type:%v, key:%v, value:%v\n", evt.Type, string(evt.Kv.Key), string(evt.Kv.Value))
+			var NewConf []*LogEntry
+			if evt.Type != clientv3.EventTypeDelete {
+				//如果是删除操作，手动传递一个空的配置项
+				err := json.Unmarshal(evt.Kv.Value, &NewConf)
+				if err != nil {
+					fmt.Println("unmarshal failed, err:", err)
+					continue
+				}
+			}
+			fmt.Printf("get new config: %v\n", NewConf)
+			NewConfCh <- NewConf
+		}
+	}
 }

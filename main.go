@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/xfp-discerning/logagent/conf"
@@ -22,7 +23,7 @@ func main() {
 		return
 	}
 	//1、初始化kafka连接
-	err = kafka.Init([]string{cfg.KafkaConf.Address},cfg.KafkaConf.Chan_max_size)
+	err = kafka.Init([]string{cfg.KafkaConf.Address}, cfg.KafkaConf.Chan_max_size)
 	if err != nil {
 		fmt.Println("init kafka fialed, err:", err)
 		return
@@ -37,7 +38,6 @@ func main() {
 	fmt.Println("init etcd success")
 
 	//2.1从etcd中获取日志收集项的配置信息
-	//2.2用哨兵去监视日志收集项的变化（有变化即使通知logagent实现热加载）
 	logEntryConf, err := etcd.Getconf(cfg.EtcdConf.Key)
 	if err != nil {
 		fmt.Println("get conf from etcd failed, err:", err)
@@ -47,7 +47,13 @@ func main() {
 	for index, value := range logEntryConf {
 		fmt.Printf("index:%v, value:%v\n", index, value)
 	}
+
 	//3、收集日志发往kafka
-	//3.1循环每一个日志项，创建tailObj
 	taillog.Init(logEntryConf)
+	//2.2用哨兵去监视日志收集项的变化（有变化即使通知logagent实现热加载）
+	newConfChan := taillog.PushNewConf()
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go etcd.WatchConf(cfg.EtcdConf.Key, newConfChan)
+	wg.Wait()
 }

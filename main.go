@@ -11,20 +11,7 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-var cfg = new(conf.AppConf)
-
-// func run() {
-// 	//1、读取日志
-// 	for {
-// 		select {
-// 		case line := <-taillog.Readlog():
-// 			//2、发送到kafka
-// 			kafka.SendtoKafka(cfg.KafkaConf.Topic, line.Text)
-// 		default:
-// 			time.Sleep(time.Second)
-// 		}
-// 	}
-// }
+var cfg = new(conf.AppConf) //加载配置文件的全局变量
 
 //入口程序
 func main() {
@@ -35,7 +22,7 @@ func main() {
 		return
 	}
 	//1、初始化kafka连接
-	err = kafka.Init([]string{cfg.KafkaConf.Address})
+	err = kafka.Init([]string{cfg.KafkaConf.Address},cfg.KafkaConf.Chan_max_size)
 	if err != nil {
 		fmt.Println("init kafka fialed, err:", err)
 		return
@@ -62,24 +49,5 @@ func main() {
 	}
 	//3、收集日志发往kafka
 	//3.1循环每一个日志项，创建tailObj
-	for _, logetry := range logEntryConf {
-		//logEntry.path是要收集日志的路劲
-		task := taillog.NewTailTask(logetry.Path, logetry.Topic)
-		for {
-			select {
-			case line := <-task.Readlog():
-				kafka.SendtoKafka(logetry.Topic, line.Text)
-			}
-		}
-	}
-	//3.2发往kafka
-
-	// //2、打开日志文件准备收集日志
-	// err = taillog.Init(cfg.TaillogConf.Path)
-	// if err != nil {
-	// 	fmt.Println("init taillog failed, err:", err)
-	// 	return
-	// }
-	// fmt.Println("init taillog successful")
-	// run()
+	taillog.Init(logEntryConf)
 }

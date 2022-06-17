@@ -9,7 +9,7 @@ import (
 	"go.etcd.io/etcd/clientv3"
 )
 
-type logEntry struct {
+type LogEntry struct {
 	Path  string `json:"path"`//tag，可以用json.Unmarshal直接反序列化存到对象中
 	Topic string `json:"topic"`
 }
@@ -28,7 +28,7 @@ func Init(addr string, timeout time.Duration) (err error) {
 	return
 }
 
-func Getconf(key string) (logEntryConf []*logEntry, err error) {
+func Getconf(key string) (logEntryConf []*LogEntry, err error) {
 	//get
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	resp, err := cli.Get(ctx, key)

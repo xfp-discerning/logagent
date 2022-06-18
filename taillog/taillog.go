@@ -1,6 +1,7 @@
 package taillog
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hpcloud/tail"
@@ -13,12 +14,18 @@ type TailTask struct {
 	path     string
 	topic    string
 	instance *tail.Tail
+	//为了实现退出t.run
+	ctx context.Context
+	cancelFunc context.CancelFunc
 }
 
 func NewTailTask(path string, topic string) (tailObj *TailTask) {
+	ctx,cancel := context.WithCancel(context.Background())
 	tailObj = &TailTask{
 		path:  path,
 		topic: topic,
+		ctx: ctx,
+		cancelFunc: cancel,
 	}
 	tailObj.init() //according to path to open log//利用tailf包
 	return
@@ -45,6 +52,9 @@ func (t *TailTask) init() {
 func (t *TailTask) run() {
 	for {
 		select {
+		case <-t.ctx.Done():
+			fmt.Printf("tailtask : %s_%s has exited\n",t.path,t.topic)
+			return
 		case line := <-t.instance.Lines:
 			//发往kafka
 			// kafka.SendtoKafka(t.topic, line.Text)//函数调用函数
